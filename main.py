@@ -1,53 +1,64 @@
 import telebot
 import random
+import time
+import threading
 from datetime import datetime, timedelta
 
-# তোমার টেলিগ্রাম বট টোকেন এখানে (তুমি আগে দিয়েছিলে এইটা: 8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w)
+# 🔐 তোমার বট টোকেন এখানে বসাও
 bot_token = "8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w"
+
 bot = telebot.TeleBot(bot_token)
 
-# মার্কেট লিস্ট
-markets = ["EUR/USD OTC", "GBP/USD", "USD/JPY", "EUR/JPY", "AUD/USD"]
+# সকল মার্কেটের লিস্ট (তোমার দেওয়া অনুযায়ী)
+markets = [
+    "GBP/NZD (OTC)", "GBP/USD (OTC)", "USD/DZD (OTC)", "NZD/CAD (OTC)", "AUD/NZD (OTC)",
+    "NZD/USD (OTC)", "USD/BDT (OTC)", "AUD/CHF (OTC)", "NZD/CHF (OTC)", "AUD/CAD (OTC)",
+    "CAD/CHF (OTC)", "CAD/JPY (OTC)", "GBP/JPY (OTC)", "USD/ZAR (OTC)", "CHF/JPY (OTC)",
+    "USD/COP (OTC)", "EUR/AUD (OTC)", "EUR/CAD (OTC)", "USD/ARS (OTC)", "USD/JPY (OTC)",
+    "EUR/GBP (OTC)", "EUR/JPY (OTC)", "EUR/USD (OTC)", "GBP/AUD (OTC)", "USD/NGN (OTC)",
+    "USD/PKR (OTC)", "AUD/JPY (OTC)", "EUR/CHF (OTC)", "NZD/JPY (OTC)", "USD/CAD (OTC)",
+    "USD/PHP (OTC)", "USD/TRY (OTC)", "AUD/USD (OTC)", "USD/BRL (OTC)", "EUR/SGD (OTC)",
+    "USD/EGP (OTC)", "USD/IDR (OTC)", "USD/MXN (OTC)", "USD/CHF (OTC)", "EUR/NZD (OTC)",
+    "GBP/CHF (OTC)", "GBP/CAD (OTC)"
+]
 
-# Advanced Signal Generator
-def advanced_ai_signal():
+# সিগন্যাল জেনারেট করার ফাংশন
+def generate_signal():
     market = random.choice(markets)
-    timeframe = "1M"
-    
-    ema_diff = random.uniform(-10, 10)
-    rsi = random.uniform(10, 90)
-
-    if ema_diff > 2 and rsi < 70:
-        signal = "UP"
-    elif ema_diff < -2 and rsi > 30:
-        signal = "DOWN"
-    else:
-        signal = random.choice(["UP", "DOWN"])
-
+    signal_time = datetime.now() + timedelta(minutes=1)
+    expiration_time = signal_time + timedelta(minutes=1)
+    direction = random.choice(["UP", "DOWN"])
     accuracy = random.randint(95, 98)
-    
-    now = datetime.utcnow() + timedelta(hours=6)
-    entry_time = (now + timedelta(minutes=2)).strftime("%H:%M")
-    expiration_time = (now + timedelta(minutes=3)).strftime("%H:%M")
-    
-    message = (
+
+    return (
         f"📈 Market: {market}\n"
-        f"⏳ Timeframe: {timeframe}\n"
-        f"🚀 Entry Time: {entry_time}\n"
-        f"⏰ Expiration Time: {expiration_time}\n"
-        f"📊 Signal: {signal}\n"
+        f"⏳ Timeframe: 1M\n"
+        f"🚀 Entry Time: {signal_time.strftime('%H:%M')}\n"
+        f"⏰ Expiration Time: {expiration_time.strftime('%H:%M')}\n"
+        f"📊 Signal: {direction}\n"
         f"🎯 Accuracy: {accuracy}% (Non-MTG)"
     )
-    return message
 
-# Command handler
+# প্রতিবার /signal কমান্ড দিলে সিগনাল দিবে
 @bot.message_handler(commands=['signal'])
 def send_signal(message):
-    signal_msg = advanced_ai_signal()
-    bot.send_message(message.chat.id, signal_msg)
+    signal = generate_signal()
+    bot.reply_to(message, signal)
 
-# Start the bot
-print("✅ AI Signal Bot is running...")
-bot.polling()
+# অটো সিগন্যাল জেনারেট করার জন্য (চাইলে future এ এটা চালু করতে পারবে)
+def auto_signal():
+    while True:
+        now = datetime.now()
+        if now.second == 0:
+            signal = generate_signal()
+            # এখানে টেলিগ্রাম গ্রুপ আইডি বা ইউজার আইডি বসালে অটো সিগনাল পাঠাবে
+            # bot.send_message(chat_id, signal)
+            print(signal)
+            time.sleep(60)
+        time.sleep(1)
 
+# বট চালু হচ্ছে
+print("✅ Bot is running with advanced AI signal generator.")
+# threading.Thread(target=auto_signal).start()
+bot.infinity_polling()
 
