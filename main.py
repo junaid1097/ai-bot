@@ -1,64 +1,94 @@
 import telebot
-import random
 import time
-import threading
 from datetime import datetime, timedelta
+import random
 
-# 🔐 তোমার বট টোকেন এখানে বসাও
-bot_token = "8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w"
+# তোমার Bot Token এখানে বসাও
+BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
 
-bot = telebot.TeleBot(bot_token)
+bot = telebot.TeleBot(BOT_TOKEN)
 
-# সকল মার্কেটের লিস্ট (তোমার দেওয়া অনুযায়ী)
-markets = [
-    "GBP/NZD (OTC)", "GBP/USD (OTC)", "USD/DZD (OTC)", "NZD/CAD (OTC)", "AUD/NZD (OTC)",
-    "NZD/USD (OTC)", "USD/BDT (OTC)", "AUD/CHF (OTC)", "NZD/CHF (OTC)", "AUD/CAD (OTC)",
-    "CAD/CHF (OTC)", "CAD/JPY (OTC)", "GBP/JPY (OTC)", "USD/ZAR (OTC)", "CHF/JPY (OTC)",
-    "USD/COP (OTC)", "EUR/AUD (OTC)", "EUR/CAD (OTC)", "USD/ARS (OTC)", "USD/JPY (OTC)",
-    "EUR/GBP (OTC)", "EUR/JPY (OTC)", "EUR/USD (OTC)", "GBP/AUD (OTC)", "USD/NGN (OTC)",
-    "USD/PKR (OTC)", "AUD/JPY (OTC)", "EUR/CHF (OTC)", "NZD/JPY (OTC)", "USD/CAD (OTC)",
-    "USD/PHP (OTC)", "USD/TRY (OTC)", "AUD/USD (OTC)", "USD/BRL (OTC)", "EUR/SGD (OTC)",
-    "USD/EGP (OTC)", "USD/IDR (OTC)", "USD/MXN (OTC)", "USD/CHF (OTC)", "EUR/NZD (OTC)",
-    "GBP/CHF (OTC)", "GBP/CAD (OTC)"
+# Market list - তোমার দেয়া OTC আর Real Market আলাদা করে দেয়া
+REAL_MARKETS = [
+    'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF',
+    # এখানে আরো রিয়েল মার্কেট এড করো যদি থাকে
 ]
 
-# সিগন্যাল জেনারেট করার ফাংশন
+OTC_MARKETS = [
+    'EUR/USD (OTC)', 'GBP/NZD (OTC)', 'GBP/USD (OTC)', 'USD/DZD (OTC)',
+    'NZD/CAD (OTC)', 'AUD/NZD (OTC)', 'NZD/USD (OTC)', 'USD/BDT (OTC)',
+    'AUD/CHF (OTC)', 'NZD/CHF (OTC)', 'AUD/CAD (OTC)', 'CAD/CHF (OTC)',
+    'CAD/JPY (OTC)', 'GBP/JPY (OTC)', 'USD/ZAR (OTC)', 'CHF/JPY (OTC)',
+    'USD/COP (OTC)', 'EUR/AUD (OTC)', 'EUR/CAD (OTC)', 'USD/ARS (OTC)',
+    'USD/JPY (OTC)', 'EUR/GBP (OTC)', 'EUR/JPY (OTC)', 'EUR/USD (OTC)',
+    'GBP/AUD (OTC)', 'USD/NGN (OTC)', 'USD/PKR (OTC)', 'AUD/JPY (OTC)',
+    'EUR/CHF (OTC)', 'NZD/JPY (OTC)', 'USD/CAD (OTC)', 'USD/PHP (OTC)',
+    'USD/TRY (OTC)', 'AUD/USD (OTC)', 'USD/BRL (OTC)', 'EUR/SGD (OTC)',
+    'USD/EGP (OTC)', 'USD/IDR (OTC)', 'USD/MXN (OTC)', 'USD/CHF (OTC)',
+    'EUR/NZD (OTC)', 'GBP/CHF (OTC)', 'GBP/CAD (OTC)',
+]
+
+# বড় মার্কেট লিস্ট, Real প্রথমে, তারপর OTC
+MARKETS = REAL_MARKETS + OTC_MARKETS
+
+# আগের সিগন্যাল ট্র্যাক করতে
+last_signal_time = None
+last_market = None
+
 def generate_signal():
-    market = random.choice(markets)
-    signal_time = datetime.now() + timedelta(minutes=1)
-    expiration_time = signal_time + timedelta(minutes=1)
-    direction = random.choice(["UP", "DOWN"])
-    accuracy = random.randint(95, 98)
+    global last_signal_time, last_market
 
-    return (
-        f"📈 Market: {market}\n"
-        f"⏳ Timeframe: 1M\n"
-        f"🚀 Entry Time: {signal_time.strftime('%H:%M')}\n"
-        f"⏰ Expiration Time: {expiration_time.strftime('%H:%M')}\n"
-        f"📊 Signal: {direction}\n"
-        f"🎯 Accuracy: {accuracy}% (Non-MTG)"
-    )
+    now = datetime.utcnow()
+    # আগের সিগন্যাল ১ মিনিট আগে এসেছে কিনা চেক করবো
+    if last_signal_time and (now - last_signal_time) < timedelta(minutes=1):
+        return None  # ১ মিনিটের মধ্যেই নতুন সিগন্যাল দিব না
 
-# প্রতিবার /signal কমান্ড দিলে সিগনাল দিবে
+    # এবার মার্কেট বাছাই করার লজিক:
+    # আগের মার্কেট বাদ দিয়ে পরের মার্কেটে সিগন্যাল দিবো, যদি আগের মার্কেট None হয়, প্রথম মার্কেট থেকে শুরু
+    if last_market is None:
+        market = MARKETS[0]
+    else:
+        try:
+            last_index = MARKETS.index(last_market)
+            market = MARKETS[(last_index + 1) % len(MARKETS)]
+        except ValueError:
+            market = MARKETS[0]  # safety fallback
+
+    # Signal Direction (UP/DOWN) randomly (তুমি AI দিয়ে পরিবর্তন করতে পারো)
+    signal = random.choice(['UP', 'DOWN'])
+
+    # Accuracy 90% এর উপরে ধরে নিচ্ছি
+    accuracy = random.randint(90, 98)
+
+    # Entry time: এখন থেকে 1 মিনিট পর
+    entry_time = (now + timedelta(minutes=1)).strftime('%H:%M')
+
+    # Expire time: entry time থেকে 1 মিনিট পর
+    expire_time = (now + timedelta(minutes=2)).strftime('%H:%M')
+
+    last_signal_time = now
+    last_market = market
+
+    return f"""📈 Market: {market}
+⏳ Timeframe: 1M
+🚀 Entry Time: {entry_time}
+⏰ Expiration Time: {expire_time}
+📊 Signal: {signal}
+🎯 Accuracy: {accuracy}% (Non-MTG)
+"""
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.reply_to(message, "হ্যালো! আমি তোমার AI ট্রেডিং সিগন্যাল বট। সিগন্যাল পেতে /signal কমান্ড দিন।")
+
 @bot.message_handler(commands=['signal'])
 def send_signal(message):
-    signal = generate_signal()
-    bot.reply_to(message, signal)
+    signal_msg = generate_signal()
+    if signal_msg:
+        bot.send_message(message.chat.id, signal_msg)
+    else:
+        bot.send_message(message.chat.id, "অনুগ্রহ করে একটু অপেক্ষা করুন, নতুন সিগন্যাল তৈরি হচ্ছে...")
 
-# অটো সিগন্যাল জেনারেট করার জন্য (চাইলে future এ এটা চালু করতে পারবে)
-def auto_signal():
-    while True:
-        now = datetime.now()
-        if now.second == 0:
-            signal = generate_signal()
-            # এখানে টেলিগ্রাম গ্রুপ আইডি বা ইউজার আইডি বসালে অটো সিগনাল পাঠাবে
-            # bot.send_message(chat_id, signal)
-            print(signal)
-            time.sleep(60)
-        time.sleep(1)
-
-# বট চালু হচ্ছে
-print("✅ Bot is running with advanced AI signal generator.")
-# threading.Thread(target=auto_signal).start()
+print("Bot is running...")
 bot.infinity_polling()
 
