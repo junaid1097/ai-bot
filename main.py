@@ -7,6 +7,8 @@ import os
 
 # তোমার বট টোকেন এখানে বসাও:
 BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
+# Chat ID (তুমি যেটা দিয়েছিলে):
+TELEGRAM_CHAT_ID = 6971835734
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -45,7 +47,7 @@ results = load_results()
 def is_real_market_open():
     now = datetime.now(bd_timezone)
     weekday = now.weekday()
-    return weekday < 5
+    return weekday < 5  # সোম-শুক্রবার রিয়েল মার্কেট ওপেন
 
 def get_active_real_markets():
     now = datetime.now(bd_timezone)
@@ -80,6 +82,7 @@ def generate_signal():
     global last_signal_time
     now = datetime.now(bd_timezone)
 
+    # Cooldown চেক
     if last_signal_time and (now - last_signal_time) < timedelta(minutes=cooldown_minutes):
         return None
 
@@ -105,36 +108,53 @@ def generate_signal():
 ——————————————
 ⚠ Execute Manually.""",
         "market": market,
-        "signal": direction
+        "signal": direction,
+        "accuracy": accuracy
     }
+
+# শুধুমাত্র নির্দিষ্ট চ্যাট থেকে মেসেজ গ্রহণ করবো
+def is_authorized_chat(message):
+    return message.chat.id == TELEGRAM_CHAT_ID
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
+    if not is_authorized_chat(message):
+        return
     bot.reply_to(message, "🤖 Welcome to Professional AI Signal Bot!\n\n👉 Use /signal to generate signal.\n👉 Use /win or /loss to record result.\n👉 Use /report to see profit report.")
 
 @bot.message_handler(commands=['signal'])
 def send_signal(message):
+    if not is_authorized_chat(message):
+        return
     signal_data = generate_signal()
-    if signal_data:
-        message_id = bot.send_message(message.chat.id, signal_data["message"]).message_id
-        bot.send_message(message.chat.id, f"Signal ID: {message_id}")
-    else:
+    if signal_data is None:
         bot.send_message(message.chat.id, "⏳ Cooldown active. Please wait 1-2 min.")
+    elif isinstance(signal_data, str):
+        bot.send_message(message.chat.id, signal_data)  # যখন market unstable
+    else:
+        msg = signal_data["message"]
+        bot.send_message(message.chat.id, msg)
 
 @bot.message_handler(commands=['win'])
 def record_win(message):
+    if not is_authorized_chat(message):
+        return
     results["win"] += 1
     save_results(results)
     bot.reply_to(message, f"✅ Win Recorded!\nTotal: {results['win']} Wins | {results['loss']} Losses")
 
 @bot.message_handler(commands=['loss'])
 def record_loss(message):
+    if not is_authorized_chat(message):
+        return
     results["loss"] += 1
     save_results(results)
     bot.reply_to(message, f"❌ Loss Recorded!\nTotal: {results['win']} Wins | {results['loss']} Losses")
 
 @bot.message_handler(commands=['report'])
 def report(message):
+    if not is_authorized_chat(message):
+        return
     total = results["win"] + results["loss"]
     if total == 0:
         win_rate = 0
@@ -149,3 +169,4 @@ def report(message):
 
 print("✅ Professional AI Signal Bot is running...")
 bot.infinity_polling(timeout=60, long_polling_timeout=30)
+
