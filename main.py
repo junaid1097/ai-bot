@@ -1,100 +1,68 @@
 import telebot
-import time
-from datetime import datetime, timedelta
-import random
-import pytz
 import requests
-from bs4 import BeautifulSoup
+import time
+import random
+from datetime import datetime, timedelta
+import pytz
 
-# ✅ তোমার Bot Token ও Chat ID
 BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
 CHAT_ID = '6971835734'
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ✅ Timezone সেট করা হচ্ছে বাংলাদেশ টাইম অনুযায়ী (UTC+6)
 bd_timezone = pytz.timezone("Asia/Dhaka")
 
-# ✅ Real এবং OTC মার্কেট লিস্ট
-REAL_MARKETS = [
-    'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'USD/CHF'
-]
-
-OTC_MARKETS = [
-    'EUR/USD (OTC)', 'GBP/USD (OTC)', 'USD/JPY (OTC)', 'AUD/USD (OTC)', 'USD/CAD (OTC)', 'USD/CHF (OTC)'
-]
-
-# ✅ আগের সিগনাল ট্র্যাক করতে
+# Cooldown system
 last_signal_time = None
-cooldown_minutes = 1  # প্রতি 1 মিনিটে একবার সিগনাল
+cooldown_minutes = 1
 
-# ✅ Live 1-Minute Payout Fetch
-def fetch_payouts():
+# API Endpoint (Quotex Unofficial)
+PAYOUT_API = "https://market-qx.pro/payout"
+
+def fetch_payout_data():
     try:
-        url = "https://market-qx.pro/trade"
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        payouts = {}
-        for row in soup.select('.option'):
-            name_elem = row.select_one('.pair-name')
-            payout_elem = row.select_one('.percent')
-            if name_elem and payout_elem:
-                name = name_elem.text.strip()
-                percent_text = payout_elem.text.strip().replace('%', '')
-                try:
-                    percent = int(percent_text)
-                    payouts[name] = percent
-                except:
-                    continue
-        return payouts
+        response = requests.get(PAYOUT_API, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print("❌ Payout API failed.")
+            return None
     except Exception as e:
-        print("❌ Payout Fetch Error:", e)
-        return {}
-
-# ✅ Market নির্বাচন (payout ≥ 75%)
-def select_market():
-    payouts = fetch_payouts()
-    eligible_markets = []
-
-    now = datetime.now(bd_timezone)
-    weekday = now.weekday()
-    hour = now.hour
-    is_real = weekday < 5 and 3 <= hour <= 23
-
-    market_list = REAL_MARKETS if is_real else OTC_MARKETS
-
-    for market in market_list:
-        payout = payouts.get(market, 0)
-        if payout >= 75:
-            eligible_markets.append((market, payout))
-
-    if eligible_markets:
-        return random.choice(eligible_markets)
-    else:
+        print(f"Error fetching payout: {e}")
         return None
 
-# ✅ Signal তৈরি করা
+def get_valid_markets():
+    data = fetch_payout_data()
+    if not data:
+        return []
+
+    valid_markets = []
+    for market in data:
+        payout_info = data[market]
+        if "1" in payout_info:
+            payout = payout_info["1"]
+            if isinstance(payout, (int, float)) and payout >= 75:
+                valid_markets.append((market, payout))
+    return valid_markets
+
 def generate_signal():
     global last_signal_time
-    now = datetime.now(bd_timezone)
 
+    now = datetime.now(bd_timezone)
     if last_signal_time and (now - last_signal_time) < timedelta(minutes=cooldown_minutes):
         return None
 
-    result = select_market()
-    if result is None:
-        return "❌ 75%+ payout মার্কেট নেই এখন। পরে চেষ্টা করুন।"
+    valid_markets = get_valid_markets()
+    if not valid_markets:
+        return None
 
-    market, payout = result
+    selected = random.choice(valid_markets)
+    market, payout = selected
     signal = random.choice(['UP', 'DOWN'])
-    accuracy = random.randint(91, 97)
+    accuracy = random.randint(91, 98)
+
     entry_time = (now + timedelta(minutes=1)).strftime('%H:%M')
     expire_time = (now + timedelta(minutes=2)).strftime('%H:%M')
-
     last_signal_time = now
 
     return f"""📊 AI Filtered Signal
@@ -110,23 +78,17 @@ def generate_signal():
 ⚠ Execute Manually.
 """
 
-# ✅ Command Handler
 @bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "✅ আমি তোমার AI Signal Bot!\n\n👉 নতুন সিগনাল পেতে /signal লিখো।")
+def welcome(message):
+    bot.reply_to(message, "✅ Advanced AI Signal Bot Ready!\n👉 নতুন সিগনাল পেতে /signal লিখো।")
 
 @bot.message_handler(commands=['signal'])
 def send_signal(message):
-    signal_msg = generate_signal()
-    if signal_msg:
-        bot.send_message(message.chat.id, signal_msg)
+    signal_text = generate_signal()
+    if signal_text:
+        bot.send_message(CHAT_ID, signal_text)
     else:
-        bot.send_message(message.chat.id, "🕐 Cooldown চলছে। ১ মিনিট পর আবার চেষ্টা করুন।")
+        bot.send_message(CHAT_ID, "⏳ এখন কোন 75%+ মার্কেট খোলা নেই বা Cooldown চলছে। ১ মিনিট পর আবার চেষ্টা করুন।")
 
-# ✅ Auto Startup Message
-def start_bot():
-    bot.send_message(CHAT_ID, "✅ Signal Bot is now running and monitoring 75%+ payout markets...")
-
-print("🤖 AI Quotex Bot is Running...")
-start_bot()
+print("✅ Pro Quotex AI Bot Running...")
 bot.infinity_polling()
