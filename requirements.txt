@@ -1,8 +1,4 @@
 pyTelegramBotAPI
 pytz
 requests
-
-
-
-
-
+beautifulsoup4
