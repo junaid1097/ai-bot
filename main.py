@@ -1,76 +1,103 @@
-import telebot
 import time
-import random
-import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from telegram import Bot
+import logging
 
-BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
-CHAT_ID = '6971835734'
+# ====== CONFIGURATION ======
 
-bot = telebot.TeleBot(BOT_TOKEN)
+# তোমার Telegram Bot Token এবং Chat ID এখানে বসাও:
+TELEGRAM_BOT_TOKEN = "8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w"
+TELEGRAM_CHAT_ID = "5330568384"
 
-SIGNAL_INTERVAL = 60  # Cooldown 1 minute
+# Minimum payout threshold for signal
+MIN_PAYOUT = 75
 
-def fetch_payout_data():
+# URL to check
+MARKET_URL = "https://market-qx.pro/en"
+
+# Cooldown between checks (seconds)
+COOLDOWN = 60
+
+# ====== SETUP TELEGRAM BOT ======
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
+
+# ====== SETUP SELENIUM CHROME ======
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Headless mode
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+
+# Adjust chromedriver path as per your setup
+CHROMEDRIVER_PATH = "./chromedriver.exe"
+
+def send_telegram_message(message):
     try:
-        url = "https://api.qxbroker.com/api/v2/payouts"
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return None
+        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+        print(f"Sent signal: {message}")
     except Exception as e:
-        print(f"Payout API error: {e}")
-        return None
+        print(f"Telegram send error: {e}")
 
-def get_valid_markets(payout_data):
-    valid_markets = []
-    for market in payout_data.get('binary', {}).get('turbo', []):
-        asset = market.get("asset")
-        is_open = market.get("enabled")
-        payout = market.get("payout")
+def fetch_payouts(driver):
+    driver.get(MARKET_URL)
+    time.sleep(7)  # Wait for page to load properly
 
-        if is_open and payout >= 75:
-            valid_markets.append((asset, payout))
-    return valid_markets
+    payouts = {}
 
-def send_signal():
-    payout_data = fetch_payout_data()
-    if payout_data is None:
-        bot.send_message(CHAT_ID, "❌ Payout API failed.")
-        return
+    try:
+        # Real Market Payout
+        real_xpath = "//div[contains(text(),'Real')]/following-sibling::div[contains(@class,'payout')]"
+        real_elem = driver.find_element(By.XPATH, real_xpath)
+        real_payout_text = real_elem.text.strip().replace('%', '')
+        real_payout = float(real_payout_text)
+        payouts['Real'] = real_payout
+    except Exception as e:
+        print(f"Error fetching Real payout: {e}")
 
-    valid_markets = get_valid_markets(payout_data)
-    if not valid_markets:
-        bot.send_message(CHAT_ID, "⚠ No market found (75%+ payout).")
-        return
+    try:
+        # OTC Market Payout
+        otc_xpath = "//div[contains(text(),'OTC')]/following-sibling::div[contains(@class,'payout')]"
+        otc_elem = driver.find_element(By.XPATH, otc_xpath)
+        otc_payout_text = otc_elem.text.strip().replace('%', '')
+        otc_payout = float(otc_payout_text)
+        payouts['OTC'] = otc_payout
+    except Exception as e:
+        print(f"Error fetching OTC payout: {e}")
 
-    market = random.choice(valid_markets)
-    direction = random.choice(["UP", "DOWN"])
-    accuracy = random.randint(87, 95)
-    
-    current_time = time.localtime()
-    entry_time = time.strftime("%H:%M", current_time)
-    expiry_time = time.strftime("%H:%M", time.localtime(time.time() + 60))
+    return payouts
 
-    signal = f"""📊 AI Filtered Signal
-——————————————
-🪙 Market: {market[0]}
-💰 Payout: {market[1]}%
-⏰ Timeframe: 1M
-🚀 Entry Time: {entry_time}
-❌ Expiration: {expiry_time}
-📈 Signal: {direction}
-🎯 Accuracy: {accuracy}%
-——————————————
-⚠ Execute Manually."""
-    
-    bot.send_message(CHAT_ID, signal)
+def main():
+    print("Bot started...")
+
+    driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=chrome_options)
+
+    last_signal_time = 0
+
+    while True:
+        try:
+            payouts = fetch_payouts(driver)
+            print(f"Payouts fetched: {payouts}")
+
+            # Check payouts and send signal if payout >= MIN_PAYOUT
+            for market, payout in payouts.items():
+                if payout >= MIN_PAYOUT:
+                    now = time.time()
+                    if now - last_signal_time > COOLDOWN:
+                        message = f"🔥 {market} Market payout is {payout}% — Signal is ON! ✅"
+                        send_telegram_message(message)
+                        last_signal_time = now
+                    else:
+                        print("Cooldown active, skipping signal.")
+                else:
+                    print(f"{market} payout {payout}% below threshold.")
+
+        except Exception as e:
+            print(f"Error in main loop: {e}")
+
+        time.sleep(COOLDOWN)
 
 if __name__ == "__main__":
-    bot.send_message(CHAT_ID, "✅ Pro Quotex AI Bot Running!")
-    while True:
-        send_signal()
-        time.sleep(SIGNAL_INTERVAL)
+    main()
+
