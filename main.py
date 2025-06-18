@@ -3,28 +3,31 @@ import telegram
 import random
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+
 from selenium.webdriver.common.by import By
 
-# ====== তোমার Bot Token & Chat ID বসাও নিচে ======
+# ====== তোমার Bot Token & Chat ID ======
 BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
 CHAT_ID = '5846045357'
 
 bot = telegram.Bot(token=BOT_TOKEN)
 
-# Headless Chrome setup
+# ✅ Replit-Compatible Chrome Setup
 chrome_options = Options()
-chrome_options.add_argument("--headless")
+chrome_options.binary_location = "/usr/bin/chromium-browser"
+chrome_options.add_argument('--headless')
+chrome_options.add_argument('--no-sandbox')
+chrome_options.add_argument('--disable-dev-shm-usage')
 chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--window-size=1920x1080")
-chrome_options.add_argument('--no-sandbox')
-chrome_options.add_argument("--disable-dev-shm-usage")
 
-driver = webdriver.Chrome(options=chrome_options)
+service = Service("/usr/bin/chromedriver")
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
-# Target URL
+# Target Website
 URL = 'https://market-qx.pro/en'
 
-# Function to check and send signal
 def check_payout_and_send_signal():
     driver.get(URL)
     time.sleep(5)
@@ -60,12 +63,12 @@ def check_payout_and_send_signal():
     except Exception as e:
         print("❌ Scraping Error:", e)
 
-# Main loop
 def main():
     print("🤖 Quotex AI Signal Bot is running...")
     while True:
         check_payout_and_send_signal()
-        time.sleep(60)  # Cooldown 1 minute
+        time.sleep(60)
 
 if __name__ == "__main__":
     main()
+
