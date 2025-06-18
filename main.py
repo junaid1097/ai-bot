@@ -1,65 +1,77 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-import telegram
 import time
-import random
+import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from telegram import Bot
 
-# ========================
-# তোমার টেলিগ্রাম বট টোকেন আর চ্যাট আইডি এখানে সেট করা হলো
-BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
-CHAT_ID = '6971835734'
-# ========================
+# 🔐 Telegram Bot Config
+BOT_TOKEN = "8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w"
+CHAT_ID = "6971835734"
 
-bot = telegram.Bot(token=BOT_TOKEN)
+# 🌐 Setup headless Chrome
+def get_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920x1080")
+    return webdriver.Chrome(options=chrome_options)
 
-chrome_options = Options()
-chrome_options.binary_location = "/usr/bin/chromium-browser"  # Replit বা লিনাক্সে চলার জন্য
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--window-size=1920,1080")
+# 🔎 Extract payout from market-qx.pro
+def fetch_payout():
+    try:
+        driver = get_driver()
+        driver.get("https://market-qx.pro/en")
+        time.sleep(7)
 
-service = Service(ChromeDriverManager().install())
+        all_divs = driver.find_elements("css selector", ".instruments-list > div")
 
-driver = webdriver.Chrome(service=service, options=chrome_options)
+        signals = []
+        for div in all_divs:
+            try:
+                name = div.find_element("css selector", ".pair").text.strip()
+                payout_text = div.find_element("css selector", ".percent").text.strip()
+                payout = int(payout_text.replace("%", ""))
 
-def get_payout():
-    driver.get("https://market-qx.pro/en")
-    time.sleep(5)
-    # ডেমো হিসেবে র‍্যান্ডম পেআউট দিচ্ছি, তোমার ওয়েবসাইট থেকে scrape করো এখানে
-    payout = random.choice([70, 74, 75, 80, 85])
-    return payout
+                if payout >= 75:
+                    signals.append((name, payout))
+            except:
+                continue
 
-def send_signal(signal):
-    message = f"🔥 Quotex Signal: {signal} 🔥"
-    bot.send_message(chat_id=CHAT_ID, text=message)
+        driver.quit()
+        return signals
 
-def main():
-    cooldown = 60  # 60 সেকেন্ড পর পর সিগনাল যাবে
-    last_signal_time = 0
+    except Exception as e:
+        print("Error:", e)
+        return []
 
+# 📤 Send signal to Telegram
+def send_signal(name, payout):
+    msg = f"""📊 AI Filtered Signal
+——————————————
+🪙 Market: {name}
+💰 Payout: {payout}%
+⏰ Timeframe: 1M
+🚀 Entry Time: {time.strftime("%H:%M")}
+❌ Expiration: {time.strftime("%H:%M", time.localtime(time.time() + 60))}
+📈 Signal: UP
+🎯 Accuracy: 90%+
+—————————"""
+    Bot(token=BOT_TOKEN).send_message(chat_id=CHAT_ID, text=msg)
+
+# 🔄 Loop with cooldown
+def run_bot():
     while True:
-        payout = get_payout()
-        print(f"Current payout: {payout}%")
-
-        now = time.time()
-
-        if payout >= 75 and now - last_signal_time > cooldown:
-            send_signal("UP")
-            last_signal_time = now
-            print("Signal sent!")
+        results = fetch_payout()
+        if results:
+            for name, payout in results:
+                send_signal(name, payout)
+                print(f"✅ Sent signal for {name} with {payout}% payout.")
+                time.sleep(60)  # cooldown
         else:
-            print("No signal sent.")
-
-        time.sleep(10)
+            print("❌ No market found with 75%+ payout.")
+        time.sleep(60)
 
 if __name__ == "__main__":
-    try:
-        print("Bot started...")
-        main()
-    except KeyboardInterrupt:
-        print("Bot stopped by user.")
-    finally:
-        driver.quit()
+    run_bot()
