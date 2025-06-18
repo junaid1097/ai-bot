@@ -1,2 +1,2 @@
-telebot
-requests
+selenium
+python-telegram-bot
