@@ -12,7 +12,7 @@ CHAT_ID = '6971835734'
 CHECK_INTERVAL = 60  # seconds
 MIN_PAYOUT = 75
 
-# Updated headers for proper anti-bot bypass
+# ===== HEADERS =====
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
@@ -21,8 +21,9 @@ HEADERS = {
     'Sec-Fetch-Site': 'same-origin'
 }
 
+# ===== COOKIE (Decoded) =====
 COOKIES = {
-    'laravel_session': 'eyJpdiI6Ill2RlU2R2RBa2cyTWNQcjFwaC9sY1E9PSIsInZhbHVlIjoiZm52TlprcTU5am5jR2tQY08xZUNheHJEcCtEQXdOaGlaWldzeUZ1SGFneUlFRU15L0tRVitMSzV3N1ozL1dBTytmbE1Tbks1Mm1xTTg2YlhwSUhXVXNjRC9zZHNMbUxsYnBsSVAzR1d1TnovNlNaZ0hESkVVVUpwK01xcHF3WlIiLCJtYWMiOiI0MjdhZDk3YTM0NWFiM2RhODY1NTkyNDY3MzM5Y2UwMTJhYmE2ZjAxMTM4MTI0ZjFmMDc3ZjFjZjYwMGU2YjBiIiwidGFnIjoiIn0%3D'
+    'laravel_session': 'eyJpdiI6Ill2RlU2R2RBa2cyTWNQcjFwaC9sY1E9PSIsInZhbHVlIjoiZm52TlprcTU5am5jR2tQY08xZUNheHJEcCtEQXdOaGlaWldzeUZ1SGFneUlFRU15L0tRVitMSzV3N1ozL1dBTytmbE1Tbks1Mm1xTTg2YlhwSUhXVXNjRC9zZHNMbUxsYnBsSVAzR1d1TnovNlNaZ0hESkVVVUpwK01xcHF3WlIiLCJtYWMiOiI0MjdhZDk3YTM0NWFiM2RhODY1NTkyNDY3MzM5Y2UwMTJhYmE2ZjAxMTM4MTI0ZjFmMDc3ZjFjZjYwMGU2YjBiIiwidGFnIjoiIn0='
 }
 
 bot = Bot(token=BOT_TOKEN)
@@ -64,7 +65,7 @@ def send_signal(market, payout):
     print("✅ Signal Sent")
 
 def run_bot():
-    print("🤖 Pro Quotex AI Bot Running...")
+    print("🤖 Pro Quotex AI Bot Running (Cookie Web Scraping Mode)...")
     while True:
         data = fetch_payout()
         if data and 'data' in data:
@@ -74,10 +75,11 @@ def run_bot():
                 payout_1m = info.get('turbo', 0)
                 if payout_1m >= MIN_PAYOUT:
                     send_signal(symbol.upper(), payout_1m)
-                    break  # cooldown 1 minute per signal
+                    break  # Cooldown
         else:
             print("❌ Failed to fetch payout.")
         time.sleep(CHECK_INTERVAL)
 
 if __name__ == '__main__':
     run_bot()
+
