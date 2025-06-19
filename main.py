@@ -12,7 +12,7 @@ CHAT_ID = '6971835734'
 CHECK_INTERVAL = 60  # seconds
 MIN_PAYOUT = 75
 
-# ===== HEADERS =====
+# Updated headers for anti-bot bypass
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
@@ -21,13 +21,12 @@ HEADERS = {
     'Sec-Fetch-Site': 'same-origin'
 }
 
-# ===== COOKIE (Decoded) =====
+# ✅ Updated cookie from your latest session
 COOKIES = {
-    'laravel_session': 'eyJpdiI6Ill2RlU2R2RBa2cyTWNQcjFwaC9sY1E9PSIsInZhbHVlIjoiZm52TlprcTU5am5jR2tQY08xZUNheHJEcCtEQXdOaGlaWldzeUZ1SGFneUlFRU15L0tRVitMSzV3N1ozL1dBTytmbE1Tbks1Mm1xTTg2YlhwSUhXVXNjRC9zZHNMbUxsYnBsSVAzR1d1TnovNlNaZ0hESkVVVUpwK01xcHF3WlIiLCJtYWMiOiI0MjdhZDk3YTM0NWFiM2RhODY1NTkyNDY3MzM5Y2UwMTJhYmE2ZjAxMTM4MTI0ZjFmMDc3ZjFjZjYwMGU2YjBiIiwidGFnIjoiIn0='
+    'laravel_session': 'eyJpdiI6ImZMK1NrRmtXUTVDUWhNR0pONWZvZmc9PSIsInZhbHVlIjoiczNMMS9MZ0VFOW14UGRPa1dzb1dFVUhTdzNSTHRibm9Ud1IzSGZ2ME1rekZvL1dBeFBFVnhOdUNJUFNaSG9aZkh0SUU1T1VIdVo4ZDdyZjdZQmU0M0xoOUtoK0grdHVSUVFJdlA2UXZnZVZCeDUvK1lIT2g4N1lRa0lISmxmWHciLCJtYWMiOiI3ZWU5OGI2NjEzNDdlN2RjNTFmNzYzNzk3MTk5NTlhZWJkZDQ0OGI1ZWUyNDYwMWIzMTUyNTA4MGI5YmE2NDY0IiwidGFnIjoiIn0%3D'
 }
 
 bot = Bot(token=BOT_TOKEN)
-
 bd_time = pytz.timezone('Asia/Dhaka')
 
 def fetch_payout():
@@ -75,7 +74,7 @@ def run_bot():
                 payout_1m = info.get('turbo', 0)
                 if payout_1m >= MIN_PAYOUT:
                     send_signal(symbol.upper(), payout_1m)
-                    break  # Cooldown
+                    break  # Cooldown 1 min
         else:
             print("❌ Failed to fetch payout.")
         time.sleep(CHECK_INTERVAL)
