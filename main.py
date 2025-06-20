@@ -12,7 +12,7 @@ CHAT_ID = '6971835734'
 CHECK_INTERVAL = 60  # seconds
 MIN_PAYOUT = 75
 
-# Updated headers for anti-bot bypass
+# Updated headers for proper anti-bot bypass
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
@@ -21,12 +21,20 @@ HEADERS = {
     'Sec-Fetch-Site': 'same-origin'
 }
 
-# ✅ Updated cookie from your latest session
+# All essential cookies together
 COOKIES = {
+    '__cf_bm': '1fUUQqROuGu_gq2IfUmC...hY2UGNcZs21RZh8iwgc',
+    '__vid1': 'af220b0fe006f49b69d...',
+    '__vid_l3': '2e52eed4-2a2b-4f2e-8...',
+    '_ga_L4T5GBPFHJ': 'G52.1.175033948160...',
+    '_ga': 'GA1.1.835734851.17503...',
+    'activeAccount': 'live',
+    'lang': 'en',
     'laravel_session': 'eyJpdiI6ImZMK1NrRmtXUTVDUWhNR0pONWZvZmc9PSIsInZhbHVlIjoiczNMMS9MZ0VFOW14UGRPa1dzb1dFVUhTdzNSTHRibm9Ud1IzSGZ2ME1rekZvL1dBeFBFVnhOdUNJUFNaSG9aZkh0SUU1T1VIdVo4ZDdyZjdZQmU0M0xoOUtoK0grdHVSUVFJdlA2UXZnZVZCeDUvK1lIT2g4N1lRa0lISmxmWHciLCJtYWMiOiI3ZWU5OGI2NjEzNDdlN2RjNTFmNzYzNzk3MTk5NTlhZWJkZDQ0OGI1ZWUyNDYwMWIzMTUyNTA4MGI5YmE2NDY0IiwidGFnIjoiIn0%3D'
 }
 
 bot = Bot(token=BOT_TOKEN)
+
 bd_time = pytz.timezone('Asia/Dhaka')
 
 def fetch_payout():
@@ -74,11 +82,10 @@ def run_bot():
                 payout_1m = info.get('turbo', 0)
                 if payout_1m >= MIN_PAYOUT:
                     send_signal(symbol.upper(), payout_1m)
-                    break  # Cooldown 1 min
+                    break  # cooldown 1 minute per signal
         else:
             print("❌ Failed to fetch payout.")
         time.sleep(CHECK_INTERVAL)
 
 if __name__ == '__main__':
     run_bot()
-
