@@ -1,27 +1,17 @@
-import requests
-import json
-import time
-import pytz
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time, json, pytz, random
 from datetime import datetime, timedelta
 from telegram import Bot
-import random
+import os
 
 # ===== CONFIG =====
 BOT_TOKEN = '8180362644:AAGtwc8hDrHkJ6cMcc3-Ioz9Hkn0cF7VD_w'
 CHAT_ID = '6971835734'
-CHECK_INTERVAL = 60  # seconds
+CHECK_INTERVAL = 60
 MIN_PAYOUT = 75
 
-# Updated headers for proper anti-bot bypass
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': 'https://market-qx.pro/',
-    'Sec-Fetch-Site': 'same-origin'
-}
-
-# All essential cookies together
 COOKIES = {
     '__cf_bm': '.y1Ox7KfhgqlLHY.zIHHEaPI0N.vr691J7XkyUKZ81g-1750399653-1.0.1.1-HhWfuhxiDWChXjGZRaRTJEMPiVs3hlYx.RI82odZjNMJXoTmmOLnqZti59fp7EtSuHziUSzCmLPqsL0J3tdrmR1hzFvjEHuFEqz2.OkAssg',
     '__vid1': 'af220b0fe006f49b69d0a9deafcf52f8',
@@ -37,20 +27,29 @@ COOKIES = {
 }
 
 bot = Bot(token=BOT_TOKEN)
-
 bd_time = pytz.timezone('Asia/Dhaka')
+
+def get_driver():
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    driver = webdriver.Chrome(options=options)
+    return driver
 
 def fetch_payout():
     try:
-        response = requests.get('https://market-qx.pro/api/payouts', headers=HEADERS, cookies=COOKIES)
-        print("Status:", response.status_code)
-        print("Preview:", response.text[:200])
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return None
+        driver = get_driver()
+        driver.get("https://market-qx.pro")
+        for key, value in COOKIES.items():
+            driver.add_cookie({'name': key, 'value': value})
+        driver.get("https://market-qx.pro/api/payouts")
+        time.sleep(2)
+        response = driver.find_element(By.TAG_NAME, "pre").text
+        driver.quit()
+        return json.loads(response)
     except Exception as e:
-        print(f"Payout API error: {e}")
+        print(f"❌ Fetch error: {e}")
         return None
 
 def send_signal(market, payout):
@@ -59,33 +58,31 @@ def send_signal(market, payout):
     expiry = (now + timedelta(minutes=2)).strftime('%H:%M')
     signal = random.choice(['UP', 'DOWN'])
     signal_id = random.randint(100, 999)
-
-    message = f"📊 AI Filtered Signal\n" \
-              f"——————————————\n" \
-              f"🪙 Market: {market}\n" \
-              f"💰 Payout: {payout}%\n" \
-              f"⏰ Timeframe: 1M\n" \
-              f"🚀 Entry Time: {entry}\n" \
-              f"❌ Expiration: {expiry}\n" \
-              f"📈 Signal: {signal}\n" \
-              f"🎯 Accuracy: {random.randint(90, 95)}%\n" \
-              f"——————————————\n" \
-              f"Signal ID: {signal_id}"
-
-    bot.send_message(chat_id=CHAT_ID, text=message)
-    print("✅ Signal Sent")
+    msg = f"📊 AI Signal\n" \
+          f"——————————————\n" \
+          f"🪙 Market: {market}\n" \
+          f"💰 Payout: {payout}%\n" \
+          f"⏰ Timeframe: 1M\n" \
+          f"🚀 Entry Time: {entry}\n" \
+          f"❌ Expiration: {expiry}\n" \
+          f"📈 Signal: {signal}\n" \
+          f"🎯 Accuracy: {random.randint(90, 95)}%\n" \
+          f"——————————————\n" \
+          f"Signal ID: {signal_id}"
+    bot.send_message(chat_id=CHAT_ID, text=msg)
+    print("✅ Signal sent")
 
 def run_bot():
-    print("🤖 Pro Quotex AI Bot Running (Cookie Web Scraping Mode)...")
+    print("🤖 Pro Quotex AI Bot Running (Headless Chrome + Cookie Mode)...")
     while True:
         data = fetch_payout()
         if data and 'data' in data:
             markets = list(data['data'].items())
             random.shuffle(markets)
             for symbol, info in markets:
-                payout_1m = info.get('turbo', 0)
-                if payout_1m >= MIN_PAYOUT:
-                    send_signal(symbol.upper(), payout_1m)
+                payout = info.get('turbo', 0)
+                if payout >= MIN_PAYOUT:
+                    send_signal(symbol.upper(), payout)
                     break
         else:
             print("❌ Failed to fetch payout.")
