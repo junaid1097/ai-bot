@@ -12,38 +12,35 @@ CHAT_ID = '6971835734'
 CHECK_INTERVAL = 60  # seconds
 MIN_PAYOUT = 75
 
-# Updated headers for proper anti-bot bypass
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'en-US,en;q=0.9',
     'Referer': 'https://market-qx.pro/',
+    'Origin': 'https://market-qx.pro',
     'Sec-Fetch-Site': 'same-origin'
 }
 
-# All essential cookies together
 COOKIES = {
-    '__cf_bm': '1fUUQqROuGu_gq2IfUmC...hY2UGNcZs21RZh8iwgc',
-    '__vid1': 'af220b0fe006f49b69d...',
-    '__vid_l3': '2e52eed4-2a2b-4f2e-8...',
-    '_ga_L4T5GBPFHJ': 'G52.1.175033948160...',
-    '_ga': 'GA1.1.835734851.17503...',
-    'activeAccount': 'live',
-    'lang': 'en',
-    'laravel_session': 'eyJpdiI6ImZMK1NrRmtXUTVDUWhNR0pONWZvZmc9PSIsInZhbHVlIjoiczNMMS9MZ0VFOW14UGRPa1dzb1dFVUhTdzNSTHRibm9Ud1IzSGZ2ME1rekZvL1dBeFBFVnhOdUNJUFNaSG9aZkh0SUU1T1VIdVo4ZDdyZjdZQmU0M0xoOUtoK0grdHVSUVFJdlA2UXZnZVZCeDUvK1lIT2g4N1lRa0lISmxmWHciLCJtYWMiOiI3ZWU5OGI2NjEzNDdlN2RjNTFmNzYzNzk3MTk5NTlhZWJkZDQ0OGI1ZWUyNDYwMWIzMTUyNTA4MGI5YmE2NDY0IiwidGFnIjoiIn0%3D'
+    'laravel_session': 'eyJpdiI6ImZMK1NrRmtXUTVDUWhNR0pONWZvZmc9PSIsInZhbHVlIjoiczNMMS9MZ0VFOW14UGRPa1dzb1dFVUhTdzNSTHRibm9Ud1IzSGZ2ME1rekZvL1dBeFBFVnhOdUNJUFNaSG9aZkh0SUU1T1VIdVo4ZDdyZjdZQmU0M0xoOUtoK0grdHVSUVFJdlA2UXZnZVZCeDUvK1lIT2g4N1lRa0lISmxmWHciLCJtYWMiOiI3ZWU5OGI2NjEzNDdlN2RjNTFmNzYzNzk3MTk5NTlhZWJkZDQ0OGI1ZWUyNDYwMWIzMTUyNTA4MGI5YmE2NDY0IiwidGFnIjoiIn0%3D',
+    '__cf_bm': 'ng1Ha2xW2aDz0WFgkEkFRdzXd67.6pIhFLQ2hD.i948-1750245879-1.0.1.1-bg9M2xdrHznNsJxFGxyKBwVav3vRi9B2xf5Aa3VzSu4bWPj7glBav7rKqxG2c0aH562Fu4hIt7ynEH6_hu.8urKwRdkJPaK.Ug19oFola8E'
 }
 
 bot = Bot(token=BOT_TOKEN)
-
 bd_time = pytz.timezone('Asia/Dhaka')
 
 def fetch_payout():
     try:
-        response = requests.get('https://market-qx.pro/api/payouts', headers=HEADERS, cookies=COOKIES)
+        response = requests.get(
+            'https://market-qx.pro/api/payouts',
+            headers=HEADERS,
+            cookies=COOKIES
+        )
         if response.status_code == 200:
             return response.json()
         else:
             print(f"API error: {response.status_code}")
+            print(f"Response content: {response.text}")
             return None
     except Exception as e:
         print(f"Payout API error: {e}")
@@ -82,7 +79,7 @@ def run_bot():
                 payout_1m = info.get('turbo', 0)
                 if payout_1m >= MIN_PAYOUT:
                     send_signal(symbol.upper(), payout_1m)
-                    break  # cooldown 1 minute per signal
+                    break
         else:
             print("❌ Failed to fetch payout.")
         time.sleep(CHECK_INTERVAL)
