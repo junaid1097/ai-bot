@@ -34,8 +34,8 @@ def get_driver():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    options.binary_location = os.path.abspath("./chrome114/chrome")
-    service = Service(executable_path="./chrome114/chromedriver")
+    options.binary_location = os.path.abspath("chrome114/chrome-linux64/chrome")
+    service = Service(executable_path=os.path.abspath("chrome114/chrome-linux64/chromedriver"))
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
