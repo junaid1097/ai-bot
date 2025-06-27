@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import time, json, pytz, random
@@ -34,7 +35,8 @@ def get_driver():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(executable_path="./chrome114/chromedriver", options=options)
+    service = Service(executable_path="./chrome114/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
     return driver
 
 def fetch_payout():
