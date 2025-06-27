@@ -34,7 +34,7 @@ def get_driver():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(executable_path="./chrome114/chromedriver", options=options)
     return driver
 
 def fetch_payout():
