@@ -1,7 +1,8 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+import shutil
 import time, json, pytz, random
 from datetime import datetime, timedelta
 from telegram import Bot
@@ -14,7 +15,7 @@ CHECK_INTERVAL = 60
 MIN_PAYOUT = 75
 
 COOKIES = {
-    '__cf_bm': '.y1Ox7KfhgqlLHY.zIHHEaPI0N.vr691J7XkyUKZ81g-1750399653-1.0.1.1-HhWfuhxiDWChXjGZRaRTJEMPiVs3hlYx.RI82odZjNMJXoTmmOLnqZti59fp7EtSuHziUSzCmLPqsL0J3tdrmR1hzFvjEHuFEqz2.OkAssg',
+    '__cf_bm': '.y1Ox7KfhgqlLHY.zIHHEaPI0N.vr691J7XkyUKZ81g-1750399653-1.0.1.1-HhWfuhxiDWChXjGZRaRTJEMPiVs3hlYx.RI82odZjNMJXoTmmOLnqZti59fp7EtSUHziUSzCmLPqsL0J3tdrmR1hzFvjEHuFEqz2.0kAssg',
     '__vid1': 'af220b0fe006f49b69d0a9deafcf52f8',
     '_ga_L4T5GBPFHJ': 'GS2.1.s1750398649$o8$g1$t1750399646$j60$l0$h0',
     '_ga': 'GA1.1.835734851.1750158089',
@@ -35,7 +36,8 @@ def get_driver():
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    service = Service(executable_path="./chrome114/chromedriver")
+    options.binary_location = shutil.which("./chrome114/chrome")  # ✅ custom Chrome
+    service = Service(executable_path="./chrome114/chromedriver")  # ✅ custom ChromeDriver
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
