@@ -2,7 +2,11 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-import time, json, pytz, random, os
+import time
+import json
+import pytz
+import random
+import os
 from datetime import datetime, timedelta
 from telegram import Bot
 
